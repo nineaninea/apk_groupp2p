@@ -1,0 +1,91 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch: # 支持在 GitHub 页面手动点击触发一键构建
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Dependencies
+        run: |
+          npm install --no-audit --no-fund
+
+      - name: Prepare Web Assets
+        run: |
+          mkdir -p www
+          # 确保 peerjs.min.js 存在于 www/ 目录下 (优先使用仓库内置文件，否则从 node_modules 提取或远程补充)
+          if [ ! -f "www/peerjs.min.js" ]; then
+            if [ -f "node_modules/peerjs/dist/peerjs.min.js" ]; then
+              cp node_modules/peerjs/dist/peerjs.min.js www/peerjs.min.js
+            else
+              curl -sL https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js -o www/peerjs.min.js || true
+            fi
+          fi
+          if [ -f "package.json" ]; then
+            npm run build || true
+          fi
+
+      - name: Initialize or Sync Capacitor Android
+        run: |
+          # 1. 备份自定义 AndroidManifest.xml (包含 WebRTC、唤醒锁与网络权限)
+          CUSTOM_MANIFEST=""
+          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+            CUSTOM_MANIFEST=$(cat android/app/src/main/AndroidManifest.xml)
+          fi
+
+          # 2. 如果缺少完整的 Gradle 骨架工程，重新初始化 Android 平台
+          if [ ! -f "android/gradlew" ]; then
+            rm -rf android
+            npx @capacitor/cli add android
+          fi
+
+          # 3. 恢复定制的 AndroidManifest.xml
+          if [ -n "$CUSTOM_MANIFEST" ]; then
+            mkdir -p android/app/src/main
+            echo "$CUSTOM_MANIFEST" > android/app/src/main/AndroidManifest.xml
+          fi
+
+          # 4. 同步 Web 前端资源与插件至 Android 原生工程
+          npx @capacitor/cli sync android
+
+      - name: Grant Execute Permission for Gradlew
+        run: |
+          cd android
+          chmod +x ./gradlew
+
+      - name: Build Android Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PeerJS 通信节点v5-v5-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
