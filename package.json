@@ -1,0 +1,17 @@
+{
+  "name": "com-p2p-peerjsnode",
+  "version": "5",
+  "private": true,
+  "description": "PeerJS 通信节点v5 - PeerJS WebRTC P2P Android Application",
+  "scripts": {
+    "build": "echo 'Static files in www or dist ready'",
+    "cap:sync": "cap sync android",
+    "cap:open": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "peerjs": "^1.5.4"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "appId": "com.p2p.peerjsnode",
+  "appName": "PeerJS 通信节点v5",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0f172a"
+  }
+}
